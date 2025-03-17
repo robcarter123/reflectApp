@@ -11,13 +11,16 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Animated,
-  InputAccessoryView
+  InputAccessoryView,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { X } from 'lucide-react-native';
+import { ChevronUp, ChevronDown, X } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 
 const INPUT_ACCESSORY_VIEW_ID = 'uniqueID';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function NewEntryScreen() {
   const [title, setTitle] = useState('');
@@ -33,6 +36,7 @@ export default function NewEntryScreen() {
   const betterResponseRef = useRef<TextInput>(null);
   const followUpRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const titleRef = useRef<TextInput>(null);
 
   const handleSave = () => {
     // TODO: Save the entry
@@ -76,51 +80,91 @@ export default function NewEntryScreen() {
   };
 
   const handleKeyPress = (fieldName: string, event: any) => {
-    console.log(`onKeyPress called for ${fieldName}`, {
-      key: event.nativeEvent.key,
-      fieldName
-    });
-
-    // If return key is pressed and shift is not held (shift+enter should still create new line)
     if (event.nativeEvent.key === 'Enter' && !event.nativeEvent.shiftKey) {
-      // Prevent default behavior
       event.preventDefault?.();
-      
-      // Navigate to next field
-      switch (fieldName) {
-        case 'title':
-          situationRef.current?.focus();
-          break;
-        case 'situation':
-          immediateReactionRef.current?.focus();
-          break;
-        case 'immediateReaction':
-          betterResponseRef.current?.focus();
-          break;
-        case 'betterResponse':
-          followUpRef.current?.focus();
-          break;
-        case 'followUp':
-          Keyboard.dismiss();
-          break;
-      }
-      
-      return true; // Prevent new line
+      moveToNextField(fieldName);
+      return true;
     }
-    return false; // Allow other keys to be handled normally
+    return false;
+  };
+
+  const moveToNextField = (currentField: string) => {
+    Haptics.selectionAsync(); // Light haptic feedback
+    switch (currentField) {
+      case 'title':
+        situationRef.current?.focus();
+        break;
+      case 'situation':
+        immediateReactionRef.current?.focus();
+        break;
+      case 'immediateReaction':
+        betterResponseRef.current?.focus();
+        break;
+      case 'betterResponse':
+        followUpRef.current?.focus();
+        break;
+      case 'followUp':
+        Keyboard.dismiss();
+        break;
+    }
+  };
+
+  const moveToPreviousField = (currentField: string) => {
+    Haptics.selectionAsync(); // Light haptic feedback
+    switch (currentField) {
+      case 'followUp':
+        betterResponseRef.current?.focus();
+        break;
+      case 'betterResponse':
+        immediateReactionRef.current?.focus();
+        break;
+      case 'immediateReaction':
+        situationRef.current?.focus();
+        break;
+      case 'situation':
+        titleRef.current?.focus();
+        break;
+      case 'title':
+        // Already at the top
+        break;
+    }
   };
 
   const renderInputAccessory = () => {
     if (Platform.OS === 'ios') {
+      const isFirstField = focusedField === 'title';
+      const isLastField = focusedField === 'followUp';
+
       return (
         <InputAccessoryView nativeID={INPUT_ACCESSORY_VIEW_ID}>
           <View style={styles.inputAccessory}>
-            <TouchableOpacity 
-              style={styles.doneButton} 
-              onPress={Keyboard.dismiss}
-            >
-              <Text style={styles.doneButtonText}>Done</Text>
-            </TouchableOpacity>
+            <View style={styles.accessoryContent}>
+              <View style={styles.navigationButtons}>
+                <TouchableOpacity 
+                  style={[styles.navButton, isFirstField && styles.navButtonDisabled]}
+                  onPress={() => !isFirstField && moveToPreviousField(focusedField)}
+                  disabled={isFirstField}
+                >
+                  <ChevronUp size={24} color={isFirstField ? '#94a3b8' : '#6366f1'} />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.navButton, isLastField && styles.navButtonDisabled]}
+                  onPress={() => !isLastField && moveToNextField(focusedField)}
+                  disabled={isLastField}
+                >
+                  <ChevronDown size={24} color={isLastField ? '#94a3b8' : '#6366f1'} />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity 
+                style={styles.doneButton} 
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  Keyboard.dismiss();
+                }}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </InputAccessoryView>
       );
@@ -156,6 +200,7 @@ export default function NewEntryScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Title</Text>
               <TextInput
+                ref={titleRef}
                 style={[
                   styles.input,
                   focusedField === 'title' && styles.inputFocused
@@ -167,7 +212,6 @@ export default function NewEntryScreen() {
                 returnKeyType="next"
                 onFocus={() => setFocusedField('title')}
                 onBlur={() => setFocusedField('')}
-                onSubmitEditing={(e) => handleSubmitEditing('title', e)}
                 onKeyPress={(e) => handleKeyPress('title', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={100}
@@ -388,19 +432,35 @@ const styles = StyleSheet.create({
     height: 60,
   },
   inputAccessory: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    backgroundColor: '#f8fafc',
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0, // Account for home indicator
+  },
+  accessoryContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  navigationButtons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  navButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#ede9fe',
   },
   doneButton: {
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#6366f1',
   },
   doneButtonText: {
-    color: '#6366f1',
+    color: '#fff',
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
   },
@@ -410,5 +470,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     textAlign: 'right',
     marginTop: 4,
+  },
+  navButtonDisabled: {
+    backgroundColor: '#f1f5f9',
   },
 });
