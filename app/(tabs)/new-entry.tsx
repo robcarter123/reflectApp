@@ -7,7 +7,8 @@ export default function NewEntryScreen() {
   const [title, setTitle] = useState('');
   const [situation, setSituation] = useState('');
   const [immediateReaction, setImmediateReaction] = useState('');
-  const [actualResponse, setActualResponse] = useState('');
+  const [betterResponse, setBetterResponse] = useState('');
+  const [followUpReflection, setFollowUpReflection] = useState('');
 
   const handleSave = () => {
     // TODO: Save the entry
@@ -54,12 +55,24 @@ export default function NewEntryScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Actual Response</Text>
+          <Text style={styles.label}>Better Response</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            value={actualResponse}
-            onChangeText={setActualResponse}
-            placeholder="How did you actually handle it?"
+            value={betterResponse}
+            onChangeText={setBetterResponse}
+            placeholder="What would be a better way to handle this?"
+            multiline
+            numberOfLines={4}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Follow-up Reflection </Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={followUpReflection}
+            onChangeText={setFollowUpReflection}
+            placeholder="Did your better response improve the outcome? What did you learn?"
             multiline
             numberOfLines={4}
           />
