@@ -289,7 +289,9 @@ export default function NewEntryScreen() {
                 blurOnSubmit={true}
                 onFocus={() => {
                   setFocusedField('followUp');
-                  scrollViewRef.current?.scrollTo({ y: 600, animated: true });
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollTo({ y: 750, animated: true });
+                  }, 100);
                 }}
                 onBlur={() => setFocusedField('')}
                 onSubmitEditing={(e) => handleSubmitEditing('followUp', e)}
