@@ -1,5 +1,16 @@
 import { useState } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  ScrollView, 
+  StyleSheet, 
+  TouchableOpacity, 
+  KeyboardAvoidingView, 
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -17,71 +28,98 @@ export default function NewEntryScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>New Journal Entry</Text>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Title</Text>
-          <TextInput
-            style={styles.input}
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Give your entry a title..."
-          />
-        </View>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView 
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.heading}>New Journal Entry</Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Title</Text>
+              <TextInput
+                style={styles.input}
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Give your entry a title..."
+                returnKeyType="next"
+              />
+            </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Situation & Feelings</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={situation}
-            onChangeText={setSituation}
-            placeholder="Describe what happened and how you're feeling..."
-            multiline
-            numberOfLines={4}
-          />
-        </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Situation & Feelings</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={situation}
+                onChangeText={setSituation}
+                placeholder="Describe what happened and how you're feeling..."
+                multiline
+                numberOfLines={4}
+                returnKeyType="next"
+                blurOnSubmit={true}
+              />
+            </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Immediate Reaction</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={immediateReaction}
-            onChangeText={setImmediateReaction}
-            placeholder="What's your impulse? How do you feel like reacting?"
-            multiline
-            numberOfLines={4}
-          />
-        </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Immediate Reaction</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={immediateReaction}
+                onChangeText={setImmediateReaction}
+                placeholder="What's your impulse? How do you feel like reacting?"
+                multiline
+                numberOfLines={4}
+                returnKeyType="next"
+                blurOnSubmit={true}
+              />
+            </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Better Response</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={betterResponse}
-            onChangeText={setBetterResponse}
-            placeholder="What would be a better way to handle this?"
-            multiline
-            numberOfLines={4}
-          />
-        </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Better Response</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={betterResponse}
+                onChangeText={setBetterResponse}
+                placeholder="What would be a better way to handle this?"
+                multiline
+                numberOfLines={4}
+                returnKeyType="next"
+                blurOnSubmit={true}
+              />
+            </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Follow-up Reflection </Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={followUpReflection}
-            onChangeText={setFollowUpReflection}
-            placeholder="Did your better response improve the outcome? What did you learn?"
-            multiline
-            numberOfLines={4}
-          />
-        </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Follow-up Reflection (24-72 hours later)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={followUpReflection}
+                onChangeText={setFollowUpReflection}
+                placeholder="Did your better response improve the outcome? What did you learn?"
+                multiline
+                numberOfLines={4}
+                returnKeyType="done"
+                blurOnSubmit={true}
+              />
+            </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleSave}>
-          <Text style={styles.buttonText}>Save Entry</Text>
-        </TouchableOpacity>
-      </ScrollView>
+            <TouchableOpacity 
+              style={styles.button} 
+              onPress={handleSave}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.buttonText}>Save Entry</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.keyboardSpacer} />
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -93,6 +131,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingBottom: 40,
   },
   heading: {
     fontFamily: 'Inter_700Bold',
@@ -140,5 +179,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
+  },
+  keyboardSpacer: {
+    height: 60,
   },
 });
