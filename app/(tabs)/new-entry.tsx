@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -12,84 +12,114 @@ import {
   Keyboard,
   Animated,
   InputAccessoryView,
-  Dimensions
+  Dimensions,
+  LayoutAnimation,
+  UIManager
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ChevronUp, ChevronDown, X } from 'lucide-react-native';
+import { ChevronUp, ChevronDown } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const INPUT_ACCESSORY_VIEW_ID = 'uniqueID';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function NewEntryScreen() {
+  // State management
   const [title, setTitle] = useState('');
   const [situation, setSituation] = useState('');
   const [immediateReaction, setImmediateReaction] = useState('');
   const [betterResponse, setBetterResponse] = useState('');
   const [followUpReflection, setFollowUpReflection] = useState('');
   const [focusedField, setFocusedField] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   
-  // Refs for text inputs to handle focus
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  
+  // Refs
+  const titleRef = useRef<TextInput>(null);
   const situationRef = useRef<TextInput>(null);
   const immediateReactionRef = useRef<TextInput>(null);
   const betterResponseRef = useRef<TextInput>(null);
   const followUpRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
-  const titleRef = useRef<TextInput>(null);
 
   const handleSave = () => {
     // TODO: Save the entry
     router.push('/journal');
   };
 
-  const handleSubmitEditing = (fieldName: string, event: any) => {
-    console.log(`onSubmitEditing called for ${fieldName}`, {
-      nativeEvent: event.nativeEvent,
-      multiline: true,
-      returnKeyType: fieldName === 'followUp' ? 'done' : 'next'
-    });
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      e => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0)
+    );
 
-    // Add a small delay to see if the new line is added after this event
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (focusedField) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 1,
+          tension: 20,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 20,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [focusedField]);
+
+  const handleFieldFocus = (fieldName: string, scrollPosition: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setFocusedField(fieldName);
+    Haptics.selectionAsync();
+    
     setTimeout(() => {
-      console.log(`Delayed check for ${fieldName}:`, {
-        situationText: situation.split('\n').length,
-        immediateReactionText: immediateReaction.split('\n').length,
-        betterResponseText: betterResponse.split('\n').length,
-        followUpText: followUpReflection.split('\n').length
+      scrollViewRef.current?.scrollTo({
+        y: scrollPosition,
+        animated: true
       });
     }, 100);
-
-    switch (fieldName) {
-      case 'title':
-        situationRef.current?.focus();
-        break;
-      case 'situation':
-        immediateReactionRef.current?.focus();
-        break;
-      case 'immediateReaction':
-        betterResponseRef.current?.focus();
-        break;
-      case 'betterResponse':
-        followUpRef.current?.focus();
-        break;
-      case 'followUp':
-        Keyboard.dismiss();
-        break;
-    }
-  };
-
-  const handleKeyPress = (fieldName: string, event: any) => {
-    if (event.nativeEvent.key === 'Enter' && !event.nativeEvent.shiftKey) {
-      event.preventDefault?.();
-      moveToNextField(fieldName);
-      return true;
-    }
-    return false;
   };
 
   const moveToNextField = (currentField: string) => {
-    Haptics.selectionAsync(); // Light haptic feedback
+    Haptics.selectionAsync();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    
     switch (currentField) {
       case 'title':
         situationRef.current?.focus();
@@ -110,7 +140,9 @@ export default function NewEntryScreen() {
   };
 
   const moveToPreviousField = (currentField: string) => {
-    Haptics.selectionAsync(); // Light haptic feedback
+    Haptics.selectionAsync();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    
     switch (currentField) {
       case 'followUp':
         betterResponseRef.current?.focus();
@@ -124,9 +156,6 @@ export default function NewEntryScreen() {
       case 'situation':
         titleRef.current?.focus();
         break;
-      case 'title':
-        // Already at the top
-        break;
     }
   };
 
@@ -137,7 +166,20 @@ export default function NewEntryScreen() {
 
       return (
         <InputAccessoryView nativeID={INPUT_ACCESSORY_VIEW_ID}>
-          <View style={styles.inputAccessory}>
+          <Animated.View 
+            style={[
+              styles.inputAccessory,
+              {
+                transform: [{
+                  translateY: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                }],
+                opacity: fadeAnim,
+              },
+            ]}
+          >
             <View style={styles.accessoryContent}>
               <View style={styles.navigationButtons}>
                 <TouchableOpacity 
@@ -145,14 +187,22 @@ export default function NewEntryScreen() {
                   onPress={() => !isFirstField && moveToPreviousField(focusedField)}
                   disabled={isFirstField}
                 >
-                  <ChevronUp size={24} color={isFirstField ? '#94a3b8' : '#6366f1'} />
+                  <ChevronUp 
+                    size={24} 
+                    color={isFirstField ? '#94a3b8' : '#6366f1'} 
+                    style={styles.navIcon}
+                  />
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.navButton, isLastField && styles.navButtonDisabled]}
                   onPress={() => !isLastField && moveToNextField(focusedField)}
                   disabled={isLastField}
                 >
-                  <ChevronDown size={24} color={isLastField ? '#94a3b8' : '#6366f1'} />
+                  <ChevronDown 
+                    size={24} 
+                    color={isLastField ? '#94a3b8' : '#6366f1'} 
+                    style={styles.navIcon}
+                  />
                 </TouchableOpacity>
               </View>
               <TouchableOpacity 
@@ -165,7 +215,7 @@ export default function NewEntryScreen() {
                 <Text style={styles.doneButtonText}>Done</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
         </InputAccessoryView>
       );
     }
@@ -173,8 +223,11 @@ export default function NewEntryScreen() {
   };
 
   const renderCharCount = (text: string, maxLength: number = 500) => {
+    const percentage = (text.length / maxLength) * 100;
+    const color = percentage > 90 ? '#ef4444' : percentage > 75 ? '#f59e0b' : '#94a3b8';
+    
     return (
-      <Text style={styles.charCount}>
+      <Text style={[styles.charCount, { color }]}>
         {text.length}/{maxLength}
       </Text>
     );
@@ -197,7 +250,14 @@ export default function NewEntryScreen() {
           >
             <Text style={styles.heading}>New Journal Entry</Text>
             
-            <View style={styles.inputGroup}>
+            <Animated.View style={[
+              styles.inputGroup,
+              {
+                transform: [{
+                  scale: focusedField === 'title' ? 1.02 : 1,
+                }],
+              }
+            ]}>
               <Text style={styles.label}>Title</Text>
               <TextInput
                 ref={titleRef}
@@ -210,24 +270,28 @@ export default function NewEntryScreen() {
                 placeholder="Give your entry a title..."
                 placeholderTextColor="#94a3b8"
                 returnKeyType="next"
-                onFocus={() => setFocusedField('title')}
-                onBlur={() => setFocusedField('')}
-                onKeyPress={(e) => handleKeyPress('title', e)}
+                onFocus={() => handleFieldFocus('title', 0)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={100}
               />
               {renderCharCount(title, 100)}
-            </View>
+            </Animated.View>
 
-            <View style={styles.inputGroup}>
+            <Animated.View style={[
+              styles.inputGroup,
+              {
+                transform: [{
+                  scale: focusedField === 'situation' ? 1.02 : 1,
+                }],
+              }
+            ]}>
               <Text style={styles.label}>Situation & Feelings</Text>
               <TextInput
                 ref={situationRef}
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'situation' && styles.inputFocused,
-                  { height: 120 }
+                  focusedField === 'situation' && styles.inputFocused
                 ]}
                 value={situation}
                 onChangeText={setSituation}
@@ -237,29 +301,28 @@ export default function NewEntryScreen() {
                 textAlignVertical="top"
                 returnKeyType="next"
                 blurOnSubmit={false}
-                onFocus={() => {
-                  console.log('Situation field focused');
-                  setFocusedField('situation');
-                  scrollViewRef.current?.scrollTo({ y: 150, animated: true });
-                }}
-                onBlur={() => setFocusedField('')}
-                onSubmitEditing={(e) => handleSubmitEditing('situation', e)}
-                onKeyPress={(e) => handleKeyPress('situation', e)}
+                onFocus={() => handleFieldFocus('situation', 150)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
               {renderCharCount(situation)}
-            </View>
+            </Animated.View>
 
-            <View style={styles.inputGroup}>
+            <Animated.View style={[
+              styles.inputGroup,
+              {
+                transform: [{
+                  scale: focusedField === 'immediateReaction' ? 1.02 : 1,
+                }],
+              }
+            ]}>
               <Text style={styles.label}>Immediate Reaction</Text>
               <TextInput
                 ref={immediateReactionRef}
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'immediateReaction' && styles.inputFocused,
-                  { height: 120 }
+                  focusedField === 'immediateReaction' && styles.inputFocused
                 ]}
                 value={immediateReaction}
                 onChangeText={setImmediateReaction}
@@ -269,28 +332,28 @@ export default function NewEntryScreen() {
                 textAlignVertical="top"
                 returnKeyType="next"
                 blurOnSubmit={false}
-                onFocus={() => {
-                  setFocusedField('immediateReaction');
-                  scrollViewRef.current?.scrollTo({ y: 300, animated: true });
-                }}
-                onBlur={() => setFocusedField('')}
-                onSubmitEditing={(e) => handleSubmitEditing('immediateReaction', e)}
-                onKeyPress={(e) => handleKeyPress('immediateReaction', e)}
+                onFocus={() => handleFieldFocus('immediateReaction', 300)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
               {renderCharCount(immediateReaction)}
-            </View>
+            </Animated.View>
 
-            <View style={styles.inputGroup}>
+            <Animated.View style={[
+              styles.inputGroup,
+              {
+                transform: [{
+                  scale: focusedField === 'betterResponse' ? 1.02 : 1,
+                }],
+              }
+            ]}>
               <Text style={styles.label}>Better Response</Text>
               <TextInput
                 ref={betterResponseRef}
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'betterResponse' && styles.inputFocused,
-                  { height: 120 }
+                  focusedField === 'betterResponse' && styles.inputFocused
                 ]}
                 value={betterResponse}
                 onChangeText={setBetterResponse}
@@ -300,28 +363,28 @@ export default function NewEntryScreen() {
                 textAlignVertical="top"
                 returnKeyType="next"
                 blurOnSubmit={false}
-                onFocus={() => {
-                  setFocusedField('betterResponse');
-                  scrollViewRef.current?.scrollTo({ y: 450, animated: true });
-                }}
-                onBlur={() => setFocusedField('')}
-                onSubmitEditing={(e) => handleSubmitEditing('betterResponse', e)}
-                onKeyPress={(e) => handleKeyPress('betterResponse', e)}
+                onFocus={() => handleFieldFocus('betterResponse', 450)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
               {renderCharCount(betterResponse)}
-            </View>
+            </Animated.View>
 
-            <View style={styles.inputGroup}>
+            <Animated.View style={[
+              styles.inputGroup,
+              {
+                transform: [{
+                  scale: focusedField === 'followUp' ? 1.02 : 1,
+                }],
+              }
+            ]}>
               <Text style={styles.label}>Follow-up Reflection (24-72 hours later)</Text>
               <TextInput
                 ref={followUpRef}
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'followUp' && styles.inputFocused,
-                  { height: 120 }
+                  focusedField === 'followUp' && styles.inputFocused
                 ]}
                 value={followUpReflection}
                 onChangeText={setFollowUpReflection}
@@ -331,30 +394,25 @@ export default function NewEntryScreen() {
                 textAlignVertical="top"
                 returnKeyType="done"
                 blurOnSubmit={true}
-                onFocus={() => {
-                  setFocusedField('followUp');
-                  setTimeout(() => {
-                    scrollViewRef.current?.scrollTo({ y: 750, animated: true });
-                  }, 100);
-                }}
-                onBlur={() => setFocusedField('')}
-                onSubmitEditing={(e) => handleSubmitEditing('followUp', e)}
-                onKeyPress={(e) => handleKeyPress('followUp', e)}
+                onFocus={() => handleFieldFocus('followUp', 750)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
               {renderCharCount(followUpReflection)}
-            </View>
+            </Animated.View>
 
             <TouchableOpacity 
               style={styles.button} 
-              onPress={handleSave}
+              onPress={() => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                handleSave();
+              }}
               activeOpacity={0.8}
             >
               <Text style={styles.buttonText}>Save Entry</Text>
             </TouchableOpacity>
             
-            <View style={styles.keyboardSpacer} />
+            <View style={[styles.keyboardSpacer, { height: keyboardHeight > 0 ? keyboardHeight : 60 }]} />
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -380,20 +438,9 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: 20,
-  },
-  label: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 16,
-    color: '#475569',
-    marginBottom: 8,
-  },
-  input: {
+    borderRadius: 16,
     backgroundColor: '#fff',
-    borderRadius: 12,
     padding: 16,
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    color: '#1e293b',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -402,13 +449,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3.84,
     elevation: 2,
+  },
+  label: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#475569',
+    marginBottom: 8,
+  },
+  input: {
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    color: '#1e293b',
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    padding: 16,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   inputFocused: {
     borderColor: '#6366f1',
+    backgroundColor: '#fff',
+    shadowColor: '#6366f1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
     shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowRadius: 8,
   },
   textArea: {
     minHeight: 120,
@@ -422,6 +489,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 12,
+    shadowColor: '#6366f1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonText: {
     color: '#fff',
@@ -435,7 +510,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0, // Account for home indicator
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
   },
   accessoryContent: {
     flexDirection: 'row',
@@ -453,11 +528,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#ede9fe',
   },
+  navButtonDisabled: {
+    backgroundColor: '#f1f5f9',
+  },
   doneButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: '#6366f1',
+    shadowColor: '#6366f1',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   doneButtonText: {
     color: '#fff',
@@ -471,7 +557,13 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: 4,
   },
-  navButtonDisabled: {
-    backgroundColor: '#f1f5f9',
+  navIcon: {
+    shadowColor: '#6366f1',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
 });
