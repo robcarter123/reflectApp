@@ -163,6 +163,7 @@ export default function NewEntryScreen() {
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Give your entry a title..."
+                placeholderTextColor="#94a3b8"
                 returnKeyType="next"
                 onFocus={() => setFocusedField('title')}
                 onBlur={() => setFocusedField('')}
@@ -181,13 +182,15 @@ export default function NewEntryScreen() {
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'situation' && styles.inputFocused
+                  focusedField === 'situation' && styles.inputFocused,
+                  { height: 120 }
                 ]}
                 value={situation}
                 onChangeText={setSituation}
                 placeholder="Describe what happened and how you're feeling..."
+                placeholderTextColor="#94a3b8"
                 multiline
-                numberOfLines={4}
+                textAlignVertical="top"
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onFocus={() => {
@@ -211,13 +214,15 @@ export default function NewEntryScreen() {
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'immediateReaction' && styles.inputFocused
+                  focusedField === 'immediateReaction' && styles.inputFocused,
+                  { height: 120 }
                 ]}
                 value={immediateReaction}
                 onChangeText={setImmediateReaction}
                 placeholder="What's your impulse? How do you feel like reacting?"
+                placeholderTextColor="#94a3b8"
                 multiline
-                numberOfLines={4}
+                textAlignVertical="top"
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onFocus={() => {
@@ -240,13 +245,15 @@ export default function NewEntryScreen() {
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'betterResponse' && styles.inputFocused
+                  focusedField === 'betterResponse' && styles.inputFocused,
+                  { height: 120 }
                 ]}
                 value={betterResponse}
                 onChangeText={setBetterResponse}
                 placeholder="What would be a better way to handle this?"
+                placeholderTextColor="#94a3b8"
                 multiline
-                numberOfLines={4}
+                textAlignVertical="top"
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onFocus={() => {
@@ -269,13 +276,15 @@ export default function NewEntryScreen() {
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'followUp' && styles.inputFocused
+                  focusedField === 'followUp' && styles.inputFocused,
+                  { height: 120 }
                 ]}
                 value={followUpReflection}
                 onChangeText={setFollowUpReflection}
                 placeholder="Did your better response improve the outcome? What did you learn?"
+                placeholderTextColor="#94a3b8"
                 multiline
-                numberOfLines={4}
+                textAlignVertical="top"
                 returnKeyType="done"
                 blurOnSubmit={true}
                 onFocus={() => {
@@ -356,7 +365,9 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
   },
   textArea: {
-    height: 120,
+    minHeight: 120,
+    maxHeight: 200,
+    paddingTop: 16,
     textAlignVertical: 'top',
   },
   button: {
