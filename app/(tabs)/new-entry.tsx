@@ -39,6 +39,77 @@ export default function NewEntryScreen() {
     router.push('/journal');
   };
 
+  const handleSubmitEditing = (fieldName: string, event: any) => {
+    console.log(`onSubmitEditing called for ${fieldName}`, {
+      nativeEvent: event.nativeEvent,
+      multiline: true,
+      returnKeyType: fieldName === 'followUp' ? 'done' : 'next'
+    });
+
+    // Add a small delay to see if the new line is added after this event
+    setTimeout(() => {
+      console.log(`Delayed check for ${fieldName}:`, {
+        situationText: situation.split('\n').length,
+        immediateReactionText: immediateReaction.split('\n').length,
+        betterResponseText: betterResponse.split('\n').length,
+        followUpText: followUpReflection.split('\n').length
+      });
+    }, 100);
+
+    switch (fieldName) {
+      case 'title':
+        situationRef.current?.focus();
+        break;
+      case 'situation':
+        immediateReactionRef.current?.focus();
+        break;
+      case 'immediateReaction':
+        betterResponseRef.current?.focus();
+        break;
+      case 'betterResponse':
+        followUpRef.current?.focus();
+        break;
+      case 'followUp':
+        Keyboard.dismiss();
+        break;
+    }
+  };
+
+  const handleKeyPress = (fieldName: string, event: any) => {
+    console.log(`onKeyPress called for ${fieldName}`, {
+      key: event.nativeEvent.key,
+      fieldName
+    });
+
+    // If return key is pressed and shift is not held (shift+enter should still create new line)
+    if (event.nativeEvent.key === 'Enter' && !event.nativeEvent.shiftKey) {
+      // Prevent default behavior
+      event.preventDefault?.();
+      
+      // Navigate to next field
+      switch (fieldName) {
+        case 'title':
+          situationRef.current?.focus();
+          break;
+        case 'situation':
+          immediateReactionRef.current?.focus();
+          break;
+        case 'immediateReaction':
+          betterResponseRef.current?.focus();
+          break;
+        case 'betterResponse':
+          followUpRef.current?.focus();
+          break;
+        case 'followUp':
+          Keyboard.dismiss();
+          break;
+      }
+      
+      return true; // Prevent new line
+    }
+    return false; // Allow other keys to be handled normally
+  };
+
   const renderInputAccessory = () => {
     if (Platform.OS === 'ios') {
       return (
@@ -95,7 +166,8 @@ export default function NewEntryScreen() {
                 returnKeyType="next"
                 onFocus={() => setFocusedField('title')}
                 onBlur={() => setFocusedField('')}
-                onSubmitEditing={() => situationRef.current?.focus()}
+                onSubmitEditing={(e) => handleSubmitEditing('title', e)}
+                onKeyPress={(e) => handleKeyPress('title', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={100}
               />
@@ -119,11 +191,13 @@ export default function NewEntryScreen() {
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onFocus={() => {
+                  console.log('Situation field focused');
                   setFocusedField('situation');
-                  scrollViewRef.current?.scrollTo({ y: 100, animated: true });
+                  scrollViewRef.current?.scrollTo({ y: 150, animated: true });
                 }}
                 onBlur={() => setFocusedField('')}
-                onSubmitEditing={() => immediateReactionRef.current?.focus()}
+                onSubmitEditing={(e) => handleSubmitEditing('situation', e)}
+                onKeyPress={(e) => handleKeyPress('situation', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
@@ -148,10 +222,11 @@ export default function NewEntryScreen() {
                 blurOnSubmit={false}
                 onFocus={() => {
                   setFocusedField('immediateReaction');
-                  scrollViewRef.current?.scrollTo({ y: 250, animated: true });
+                  scrollViewRef.current?.scrollTo({ y: 300, animated: true });
                 }}
                 onBlur={() => setFocusedField('')}
-                onSubmitEditing={() => betterResponseRef.current?.focus()}
+                onSubmitEditing={(e) => handleSubmitEditing('immediateReaction', e)}
+                onKeyPress={(e) => handleKeyPress('immediateReaction', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
@@ -176,10 +251,11 @@ export default function NewEntryScreen() {
                 blurOnSubmit={false}
                 onFocus={() => {
                   setFocusedField('betterResponse');
-                  scrollViewRef.current?.scrollTo({ y: 400, animated: true });
+                  scrollViewRef.current?.scrollTo({ y: 450, animated: true });
                 }}
                 onBlur={() => setFocusedField('')}
-                onSubmitEditing={() => followUpRef.current?.focus()}
+                onSubmitEditing={(e) => handleSubmitEditing('betterResponse', e)}
+                onKeyPress={(e) => handleKeyPress('betterResponse', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
@@ -204,9 +280,11 @@ export default function NewEntryScreen() {
                 blurOnSubmit={true}
                 onFocus={() => {
                   setFocusedField('followUp');
-                  scrollViewRef.current?.scrollTo({ y: 550, animated: true });
+                  scrollViewRef.current?.scrollTo({ y: 600, animated: true });
                 }}
                 onBlur={() => setFocusedField('')}
+                onSubmitEditing={(e) => handleSubmitEditing('followUp', e)}
+                onKeyPress={(e) => handleKeyPress('followUp', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
