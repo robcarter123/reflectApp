@@ -116,6 +116,10 @@ export default function NewEntryScreen() {
     }, 100);
   };
 
+  const handleFieldBlur = () => {
+    setFocusedField('');
+  };
+
   const moveToNextField = (currentField: string) => {
     Haptics.selectionAsync();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -157,6 +161,15 @@ export default function NewEntryScreen() {
         titleRef.current?.focus();
         break;
     }
+  };
+
+  const handleKeyPress = (fieldName: string, event: any) => {
+    if (event.nativeEvent.key === 'Enter' && !event.nativeEvent.shiftKey) {
+      event.preventDefault?.();
+      moveToNextField(fieldName);
+      return true;
+    }
+    return false;
   };
 
   const renderInputAccessory = () => {
@@ -271,6 +284,9 @@ export default function NewEntryScreen() {
                 placeholderTextColor="#94a3b8"
                 returnKeyType="next"
                 onFocus={() => handleFieldFocus('title', 0)}
+                onBlur={handleFieldBlur}
+                onSubmitEditing={() => moveToNextField('title')}
+                blurOnSubmit={false}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={100}
               />
@@ -302,6 +318,9 @@ export default function NewEntryScreen() {
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onFocus={() => handleFieldFocus('situation', 150)}
+                onBlur={handleFieldBlur}
+                onSubmitEditing={() => moveToNextField('situation')}
+                onKeyPress={(e) => handleKeyPress('situation', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
@@ -333,6 +352,9 @@ export default function NewEntryScreen() {
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onFocus={() => handleFieldFocus('immediateReaction', 300)}
+                onBlur={handleFieldBlur}
+                onSubmitEditing={() => moveToNextField('immediateReaction')}
+                onKeyPress={(e) => handleKeyPress('immediateReaction', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
@@ -364,6 +386,9 @@ export default function NewEntryScreen() {
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onFocus={() => handleFieldFocus('betterResponse', 450)}
+                onBlur={handleFieldBlur}
+                onSubmitEditing={() => moveToNextField('betterResponse')}
+                onKeyPress={(e) => handleKeyPress('betterResponse', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
@@ -395,6 +420,9 @@ export default function NewEntryScreen() {
                 returnKeyType="done"
                 blurOnSubmit={true}
                 onFocus={() => handleFieldFocus('followUp', 750)}
+                onBlur={handleFieldBlur}
+                onSubmitEditing={() => Keyboard.dismiss()}
+                onKeyPress={(e) => handleKeyPress('followUp', e)}
                 inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
                 maxLength={500}
               />
