@@ -25,6 +25,7 @@ import { ChevronUp, ChevronDown } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { saveJournalEntry } from '../../services/journal';
+import { LoadingOverlay } from '../../components/LoadingOverlay';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -59,6 +60,8 @@ export default function JournalEntryScreen() {
   const [journalFollowUp, setJournalFollowUp] = useState('');
   const [activeInputField, setActiveInputField] = useState('');
   const [keyboardSpacing, setKeyboardSpacing] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaveSuccess, setIsSaveSuccess] = useState(false);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -105,43 +108,35 @@ export default function JournalEntryScreen() {
         return;
       }
 
-      await saveJournalEntry({
-        title: journalTitle,
-        situation: journalSituation,
-        immediateReaction: journalImmediateReaction,
-        betterResponse: journalBetterResponse,
-        followUp: journalFollowUp,
-      });
+      setIsLoading(true);
+      
+      // Add artificial delay for better UX
+      await Promise.all([
+        saveJournalEntry({
+          title: journalTitle,
+          situation: journalSituation,
+          immediateReaction: journalImmediateReaction,
+          betterResponse: journalBetterResponse,
+          followUp: journalFollowUp,
+        }),
+        new Promise(resolve => setTimeout(resolve, 1500)) // Minimum 1.5s loading time
+      ]);
 
-      // First dismiss keyboard and clear active field
+      // Dismiss keyboard first
       Keyboard.dismiss();
       setActiveInputField('');
 
-      // Then clear all form fields
-      setJournalTitle('');
-      setJournalSituation('');
-      setJournalImmediateReaction('');
-      setJournalBetterResponse('');
-      setJournalFollowUp('');
-
-      // Reset scroll position
-      journalScrollViewRef.current?.scrollTo({
-        y: 0,
-        animated: false
-      });
-
-      Alert.alert('Success', 'Journal entry saved successfully', [
-        {
-          text: 'OK',
-          onPress: () => {
-            router.push('/journal');
-          }
-        }
-      ]);
+      setIsLoading(false);
+      setIsSaveSuccess(true);
     } catch (error) {
       console.error('Error saving journal entry:', error);
+      setIsLoading(false);
       Alert.alert('Error', 'Failed to save journal entry. Please try again.');
     }
+  };
+
+  const handleSaveComplete = () => {
+    router.replace('/journal');
   };
 
   useEffect(() => {
@@ -335,6 +330,11 @@ export default function JournalEntryScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <LoadingOverlay 
+        visible={isLoading} 
+        isSuccess={isSaveSuccess}
+        onSuccessComplete={handleSaveComplete}
+      />
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
