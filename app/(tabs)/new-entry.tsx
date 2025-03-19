@@ -108,9 +108,10 @@ export default function JournalEntryScreen() {
         return;
       }
 
+      // Reset success state first to ensure animation triggers on subsequent saves
+      setIsSaveSuccess(false);
       setIsLoading(true);
       
-      // Add artificial delay for better UX
       await Promise.all([
         saveJournalEntry({
           title: journalTitle,
@@ -144,6 +145,7 @@ export default function JournalEntryScreen() {
     } catch (error) {
       console.error('Error saving journal entry:', error);
       setIsLoading(false);
+      setIsSaveSuccess(false);
       Alert.alert('Error', 'Failed to save journal entry. Please try again.');
     }
   };
@@ -151,6 +153,18 @@ export default function JournalEntryScreen() {
   const handleSaveComplete = () => {
     router.replace('/journal');
   };
+
+  useEffect(() => {
+    console.log('Loading state changed:', isLoading);
+  }, [isLoading]);
+
+  useEffect(() => {
+    console.log('Save success state changed:', isSaveSuccess);
+  }, [isSaveSuccess]);
+
+  useEffect(() => {
+    console.log('Active input field changed:', activeInputField);
+  }, [activeInputField]);
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
