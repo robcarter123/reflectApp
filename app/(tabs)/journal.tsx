@@ -1,22 +1,15 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
-import { router, useNavigation, usePathname } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
 import { getJournalEntries, type JournalEntry } from '../../services/journal';
 import { format, isToday, isYesterday } from 'date-fns';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function JournalScreen() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const pathname = usePathname();
-
-  // Load entries when the screen comes into focus
-  useEffect(() => {
-    if (pathname === '/(tabs)/journal') {
-      loadEntries();
-    }
-  }, [pathname]);
 
   const loadEntries = async () => {
     try {
@@ -29,6 +22,13 @@ export default function JournalScreen() {
       setLoading(false);
     }
   };
+
+  // Load entries when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadEntries();
+    }, [])
+  );
 
   const formatDate = (timestamp: Date) => {
     if (isToday(timestamp)) {
@@ -50,10 +50,7 @@ export default function JournalScreen() {
 
   const handleEntryPress = (entryId: string | undefined) => {
     if (entryId) {
-      router.push({
-        pathname: '/(tabs)/journal/[id]',
-        params: { id: entryId }
-      });
+      router.push('/(tabs)/journal' as const);
     }
   };
 
