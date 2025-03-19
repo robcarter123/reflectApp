@@ -126,6 +126,19 @@ export default function JournalEntryScreen() {
       Keyboard.dismiss();
       setActiveInputField('');
 
+      // Clear all form fields
+      setJournalTitle('');
+      setJournalSituation('');
+      setJournalImmediateReaction('');
+      setJournalBetterResponse('');
+      setJournalFollowUp('');
+
+      // Reset scroll position
+      journalScrollViewRef.current?.scrollTo({
+        y: 0,
+        animated: false
+      });
+
       setIsLoading(false);
       setIsSaveSuccess(true);
     } catch (error) {
