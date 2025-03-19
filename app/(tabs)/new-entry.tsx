@@ -86,6 +86,10 @@ export default function JournalEntryScreen() {
     setJournalBetterResponse('');
     setJournalFollowUp('');
     setActiveInputField('');
+    journalScrollViewRef.current?.scrollTo({
+      y: 0,
+      animated: false
+    });
   };
 
   useEffect(() => {
@@ -109,9 +113,31 @@ export default function JournalEntryScreen() {
         followUp: journalFollowUp,
       });
 
-      clearForm();
-      Alert.alert('Success', 'Journal entry saved successfully');
-      router.push('/journal');
+      // First dismiss keyboard and clear active field
+      Keyboard.dismiss();
+      setActiveInputField('');
+
+      // Then clear all form fields
+      setJournalTitle('');
+      setJournalSituation('');
+      setJournalImmediateReaction('');
+      setJournalBetterResponse('');
+      setJournalFollowUp('');
+
+      // Reset scroll position
+      journalScrollViewRef.current?.scrollTo({
+        y: 0,
+        animated: false
+      });
+
+      Alert.alert('Success', 'Journal entry saved successfully', [
+        {
+          text: 'OK',
+          onPress: () => {
+            router.push('/journal');
+          }
+        }
+      ]);
     } catch (error) {
       console.error('Error saving journal entry:', error);
       Alert.alert('Error', 'Failed to save journal entry. Please try again.');
