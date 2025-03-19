@@ -14,55 +14,118 @@ import {
   InputAccessoryView,
   Dimensions,
   LayoutAnimation,
-  UIManager
+  UIManager,
+  ViewStyle,
+  TextStyle,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ChevronUp, ChevronDown } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { saveJournalEntry } from '../../services/journal';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const INPUT_ACCESSORY_VIEW_ID = 'uniqueID';
+const JOURNAL_INPUT_ACCESSORY_ID = 'journalInputAccessoryID';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export default function NewEntryScreen() {
-  // State management
-  const [title, setTitle] = useState('');
-  const [situation, setSituation] = useState('');
-  const [immediateReaction, setImmediateReaction] = useState('');
-  const [betterResponse, setBetterResponse] = useState('');
-  const [followUpReflection, setFollowUpReflection] = useState('');
-  const [focusedField, setFocusedField] = useState('');
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+interface Styles extends StyleSheet.NamedStyles<{
+  container: ViewStyle;
+  content: ViewStyle;
+  heading: TextStyle;
+  input: TextStyle;
+  textArea: TextStyle;
+  inputFocused: TextStyle;
+  label: TextStyle;
+  charCount: ViewStyle;
+  charCountText: TextStyle;
+  inputAccessoryContainer: ViewStyle;
+  inputAccessoryContent: ViewStyle;
+  navButton: ViewStyle;
+  navButtonDisabled: ViewStyle;
+  doneButton: ViewStyle;
+  doneButtonText: TextStyle;
+}> {}
+
+export default function JournalEntryScreen() {
+  const [journalTitle, setJournalTitle] = useState('');
+  const [journalSituation, setJournalSituation] = useState('');
+  const [journalImmediateReaction, setJournalImmediateReaction] = useState('');
+  const [journalBetterResponse, setJournalBetterResponse] = useState('');
+  const [journalFollowUp, setJournalFollowUp] = useState('');
+  const [activeInputField, setActiveInputField] = useState('');
+  const [keyboardSpacing, setKeyboardSpacing] = useState(0);
   
-  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   
-  // Refs
-  const titleRef = useRef<TextInput>(null);
-  const situationRef = useRef<TextInput>(null);
-  const immediateReactionRef = useRef<TextInput>(null);
-  const betterResponseRef = useRef<TextInput>(null);
-  const followUpRef = useRef<TextInput>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const journalTitleRef = useRef<TextInput>(null);
+  const journalSituationRef = useRef<TextInput>(null);
+  const journalReactionRef = useRef<TextInput>(null);
+  const journalResponseRef = useRef<TextInput>(null);
+  const journalFollowUpRef = useRef<TextInput>(null);
+  const journalScrollViewRef = useRef<ScrollView>(null);
 
-  const handleSave = () => {
-    // TODO: Save the entry
-    router.push('/journal');
+  useEffect(() => {
+    setTimeout(() => {
+      journalScrollViewRef.current?.scrollTo({
+        y: 0,
+        animated: false
+      });
+    }, 0);
+  }, []);
+
+  const clearForm = () => {
+    setJournalTitle('');
+    setJournalSituation('');
+    setJournalImmediateReaction('');
+    setJournalBetterResponse('');
+    setJournalFollowUp('');
+    setActiveInputField('');
+  };
+
+  useEffect(() => {
+    return () => {
+      clearForm();
+    };
+  }, []);
+
+  const handleJournalSave = async () => {
+    try {
+      if (!journalTitle.trim()) {
+        Alert.alert('Error', 'Please enter a title for your journal entry');
+        return;
+      }
+
+      await saveJournalEntry({
+        title: journalTitle,
+        situation: journalSituation,
+        immediateReaction: journalImmediateReaction,
+        betterResponse: journalBetterResponse,
+        followUp: journalFollowUp,
+      });
+
+      clearForm();
+      Alert.alert('Success', 'Journal entry saved successfully');
+      router.push('/journal');
+    } catch (error) {
+      console.error('Error saving journal entry:', error);
+      Alert.alert('Error', 'Failed to save journal entry. Please try again.');
+    }
   };
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      e => setKeyboardHeight(e.endCoordinates.height)
+      e => setKeyboardSpacing(e.endCoordinates.height)
     );
     const keyboardWillHide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardHeight(0)
+      () => setKeyboardSpacing(0)
     );
 
     return () => {
@@ -72,7 +135,7 @@ export default function NewEntryScreen() {
   }, []);
 
   useEffect(() => {
-    if (focusedField) {
+    if (activeInputField) {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -101,146 +164,144 @@ export default function NewEntryScreen() {
         }),
       ]).start();
     }
-  }, [focusedField]);
+  }, [activeInputField]);
 
-  const handleFieldFocus = (fieldName: string, scrollPosition: number) => {
+  const handleJournalFieldFocus = (fieldName: string, scrollPosition: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setFocusedField(fieldName);
+    setActiveInputField(fieldName);
     Haptics.selectionAsync();
     
     setTimeout(() => {
-      scrollViewRef.current?.scrollTo({
+      journalScrollViewRef.current?.scrollTo({
         y: scrollPosition,
         animated: true
       });
     }, 100);
   };
 
-  const handleFieldBlur = () => {
-    setFocusedField('');
+  const handleJournalFieldBlur = () => {
+    requestAnimationFrame(() => {
+      if (!Keyboard.isVisible()) {
+        setActiveInputField('');
+      }
+    });
   };
 
-  const moveToNextField = (currentField: string) => {
+  const navigateToNextJournalField = (currentField: string) => {
     Haptics.selectionAsync();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     
     switch (currentField) {
       case 'title':
-        situationRef.current?.focus();
+        journalSituationRef.current?.focus();
+        setActiveInputField('situation');
         break;
       case 'situation':
-        immediateReactionRef.current?.focus();
+        journalReactionRef.current?.focus();
+        setActiveInputField('immediateReaction');
         break;
       case 'immediateReaction':
-        betterResponseRef.current?.focus();
+        journalResponseRef.current?.focus();
+        setActiveInputField('betterResponse');
         break;
       case 'betterResponse':
-        followUpRef.current?.focus();
+        journalFollowUpRef.current?.focus();
+        setActiveInputField('followUp');
         break;
       case 'followUp':
         Keyboard.dismiss();
+        setActiveInputField('');
         break;
     }
   };
 
-  const moveToPreviousField = (currentField: string) => {
+  const navigateToPreviousJournalField = (currentField: string) => {
     Haptics.selectionAsync();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     
     switch (currentField) {
       case 'followUp':
-        betterResponseRef.current?.focus();
+        journalResponseRef.current?.focus();
+        setActiveInputField('betterResponse');
         break;
       case 'betterResponse':
-        immediateReactionRef.current?.focus();
+        journalReactionRef.current?.focus();
+        setActiveInputField('immediateReaction');
         break;
       case 'immediateReaction':
-        situationRef.current?.focus();
+        journalSituationRef.current?.focus();
+        setActiveInputField('situation');
         break;
       case 'situation':
-        titleRef.current?.focus();
+        journalTitleRef.current?.focus();
+        setActiveInputField('title');
         break;
     }
   };
 
-  const handleKeyPress = (fieldName: string, event: any) => {
+  const handleJournalKeyPress = (fieldName: string, event: any) => {
     if (event.nativeEvent.key === 'Enter' && !event.nativeEvent.shiftKey) {
       event.preventDefault?.();
-      moveToNextField(fieldName);
+      navigateToNextJournalField(fieldName);
       return true;
     }
     return false;
   };
 
-  const renderInputAccessory = () => {
-    if (Platform.OS === 'ios') {
-      const isFirstField = focusedField === 'title';
-      const isLastField = focusedField === 'followUp';
+  const renderJournalInputAccessory = () => {
+    if (Platform.OS !== 'ios') return null;
 
-      return (
-        <InputAccessoryView nativeID={INPUT_ACCESSORY_VIEW_ID}>
-          <Animated.View 
-            style={[
-              styles.inputAccessory,
-              {
-                transform: [{
-                  translateY: slideAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [50, 0],
-                  }),
-                }],
-                opacity: fadeAnim,
-              },
-            ]}
-          >
-            <View style={styles.accessoryContent}>
-              <View style={styles.navigationButtons}>
-                <TouchableOpacity 
-                  style={[styles.navButton, isFirstField && styles.navButtonDisabled]}
-                  onPress={() => !isFirstField && moveToPreviousField(focusedField)}
-                  disabled={isFirstField}
-                >
-                  <ChevronUp 
-                    size={24} 
-                    color={isFirstField ? '#94a3b8' : '#6366f1'} 
-                    style={styles.navIcon}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.navButton, isLastField && styles.navButtonDisabled]}
-                  onPress={() => !isLastField && moveToNextField(focusedField)}
-                  disabled={isLastField}
-                >
-                  <ChevronDown 
-                    size={24} 
-                    color={isLastField ? '#94a3b8' : '#6366f1'} 
-                    style={styles.navIcon}
-                  />
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity 
-                style={styles.doneButton} 
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  Keyboard.dismiss();
-                }}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </InputAccessoryView>
-      );
-    }
-    return null;
+    const isFirstField = activeInputField === 'title';
+    const isLastField = activeInputField === 'followUp';
+
+    return (
+      <InputAccessoryView nativeID={JOURNAL_INPUT_ACCESSORY_ID}>
+        <View style={styles.inputAccessoryContainer}>
+          <View style={styles.inputAccessoryContent}>
+            <TouchableOpacity
+              onPress={() => navigateToPreviousJournalField(activeInputField)}
+              disabled={isFirstField}
+              style={[styles.navButton, isFirstField && styles.navButtonDisabled]}
+            >
+              <Ionicons
+                name="chevron-up"
+                size={24}
+                color={isFirstField ? '#94a3b8' : '#0284c7'}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigateToNextJournalField(activeInputField)}
+              disabled={isLastField}
+              style={[styles.navButton, isLastField && styles.navButtonDisabled]}
+            >
+              <Ionicons
+                name="chevron-down"
+                size={24}
+                color={isLastField ? '#94a3b8' : '#0284c7'}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                Keyboard.dismiss();
+                setActiveInputField('');
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={styles.doneButton}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </InputAccessoryView>
+    );
   };
 
-  const renderCharCount = (text: string, maxLength: number = 500) => {
+  const renderJournalCharCount = (text: string, maxLength: number = 500) => {
     const percentage = (text.length / maxLength) * 100;
     const color = percentage > 90 ? '#ef4444' : percentage > 75 ? '#f59e0b' : '#94a3b8';
     
     return (
-      <Text style={[styles.charCount, { color }]}>
+      <Text style={[styles.charCountText, { color }]}>
         {text.length}/{maxLength}
       </Text>
     );
@@ -255,7 +316,7 @@ export default function NewEntryScreen() {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView 
-            ref={scrollViewRef}
+            ref={journalScrollViewRef}
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={true}
@@ -267,184 +328,188 @@ export default function NewEntryScreen() {
               styles.inputGroup,
               {
                 transform: [{
-                  scale: focusedField === 'title' ? 1.02 : 1,
+                  scale: activeInputField === 'title' ? 1.02 : 1,
                 }],
               }
             ]}>
               <Text style={styles.label}>Title</Text>
               <TextInput
-                ref={titleRef}
+                ref={journalTitleRef}
                 style={[
                   styles.input,
-                  focusedField === 'title' && styles.inputFocused
+                  activeInputField === 'title' && styles.inputFocused
                 ]}
-                value={title}
-                onChangeText={setTitle}
+                value={journalTitle}
+                onChangeText={setJournalTitle}
                 placeholder="Give your entry a title..."
                 placeholderTextColor="#94a3b8"
                 returnKeyType="next"
-                onFocus={() => handleFieldFocus('title', 0)}
-                onBlur={handleFieldBlur}
-                onSubmitEditing={() => moveToNextField('title')}
+                onFocus={() => handleJournalFieldFocus('title', 0)}
+                onBlur={handleJournalFieldBlur}
+                onSubmitEditing={() => navigateToNextJournalField('title')}
                 blurOnSubmit={false}
-                inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
+                inputAccessoryViewID={JOURNAL_INPUT_ACCESSORY_ID}
                 maxLength={100}
               />
-              {renderCharCount(title, 100)}
+              {renderJournalCharCount(journalTitle, 100)}
             </Animated.View>
 
             <Animated.View style={[
               styles.inputGroup,
               {
                 transform: [{
-                  scale: focusedField === 'situation' ? 1.02 : 1,
+                  scale: activeInputField === 'situation' ? 1.02 : 1,
                 }],
               }
             ]}>
               <Text style={styles.label}>Situation & Feelings</Text>
               <TextInput
-                ref={situationRef}
+                ref={journalSituationRef}
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'situation' && styles.inputFocused
+                  activeInputField === 'situation' && styles.inputFocused
                 ]}
-                value={situation}
-                onChangeText={setSituation}
+                value={journalSituation}
+                onChangeText={setJournalSituation}
                 placeholder="Describe what happened and how you're feeling..."
                 placeholderTextColor="#94a3b8"
-                multiline
+                multiline={true}
                 textAlignVertical="top"
                 returnKeyType="next"
                 blurOnSubmit={false}
-                onFocus={() => handleFieldFocus('situation', 150)}
-                onBlur={handleFieldBlur}
-                onSubmitEditing={() => moveToNextField('situation')}
-                onKeyPress={(e) => handleKeyPress('situation', e)}
-                inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
+                onFocus={() => handleJournalFieldFocus('situation', 150)}
+                onBlur={handleJournalFieldBlur}
+                onSubmitEditing={() => navigateToNextJournalField('situation')}
+                onKeyPress={(e) => handleJournalKeyPress('situation', e)}
+                inputAccessoryViewID={JOURNAL_INPUT_ACCESSORY_ID}
                 maxLength={500}
+                enablesReturnKeyAutomatically={true}
               />
-              {renderCharCount(situation)}
+              {renderJournalCharCount(journalSituation)}
             </Animated.View>
 
             <Animated.View style={[
               styles.inputGroup,
               {
                 transform: [{
-                  scale: focusedField === 'immediateReaction' ? 1.02 : 1,
+                  scale: activeInputField === 'immediateReaction' ? 1.02 : 1,
                 }],
               }
             ]}>
               <Text style={styles.label}>Immediate Reaction</Text>
               <TextInput
-                ref={immediateReactionRef}
+                ref={journalReactionRef}
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'immediateReaction' && styles.inputFocused
+                  activeInputField === 'immediateReaction' && styles.inputFocused
                 ]}
-                value={immediateReaction}
-                onChangeText={setImmediateReaction}
+                value={journalImmediateReaction}
+                onChangeText={setJournalImmediateReaction}
                 placeholder="What's your impulse? How do you feel like reacting?"
                 placeholderTextColor="#94a3b8"
-                multiline
+                multiline={true}
                 textAlignVertical="top"
                 returnKeyType="next"
                 blurOnSubmit={false}
-                onFocus={() => handleFieldFocus('immediateReaction', 300)}
-                onBlur={handleFieldBlur}
-                onSubmitEditing={() => moveToNextField('immediateReaction')}
-                onKeyPress={(e) => handleKeyPress('immediateReaction', e)}
-                inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
+                onFocus={() => handleJournalFieldFocus('immediateReaction', 300)}
+                onBlur={handleJournalFieldBlur}
+                onSubmitEditing={() => navigateToNextJournalField('immediateReaction')}
+                onKeyPress={(e) => handleJournalKeyPress('immediateReaction', e)}
+                inputAccessoryViewID={JOURNAL_INPUT_ACCESSORY_ID}
                 maxLength={500}
+                enablesReturnKeyAutomatically={true}
               />
-              {renderCharCount(immediateReaction)}
+              {renderJournalCharCount(journalImmediateReaction)}
             </Animated.View>
 
             <Animated.View style={[
               styles.inputGroup,
               {
                 transform: [{
-                  scale: focusedField === 'betterResponse' ? 1.02 : 1,
+                  scale: activeInputField === 'betterResponse' ? 1.02 : 1,
                 }],
               }
             ]}>
               <Text style={styles.label}>Better Response</Text>
               <TextInput
-                ref={betterResponseRef}
+                ref={journalResponseRef}
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'betterResponse' && styles.inputFocused
+                  activeInputField === 'betterResponse' && styles.inputFocused
                 ]}
-                value={betterResponse}
-                onChangeText={setBetterResponse}
+                value={journalBetterResponse}
+                onChangeText={setJournalBetterResponse}
                 placeholder="What would be a better way to handle this?"
                 placeholderTextColor="#94a3b8"
-                multiline
+                multiline={true}
                 textAlignVertical="top"
                 returnKeyType="next"
                 blurOnSubmit={false}
-                onFocus={() => handleFieldFocus('betterResponse', 450)}
-                onBlur={handleFieldBlur}
-                onSubmitEditing={() => moveToNextField('betterResponse')}
-                onKeyPress={(e) => handleKeyPress('betterResponse', e)}
-                inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
+                onFocus={() => handleJournalFieldFocus('betterResponse', 450)}
+                onBlur={handleJournalFieldBlur}
+                onSubmitEditing={() => navigateToNextJournalField('betterResponse')}
+                onKeyPress={(e) => handleJournalKeyPress('betterResponse', e)}
+                inputAccessoryViewID={JOURNAL_INPUT_ACCESSORY_ID}
                 maxLength={500}
+                enablesReturnKeyAutomatically={true}
               />
-              {renderCharCount(betterResponse)}
+              {renderJournalCharCount(journalBetterResponse)}
             </Animated.View>
 
             <Animated.View style={[
               styles.inputGroup,
               {
                 transform: [{
-                  scale: focusedField === 'followUp' ? 1.02 : 1,
+                  scale: activeInputField === 'followUp' ? 1.02 : 1,
                 }],
               }
             ]}>
               <Text style={styles.label}>Follow-up Reflection (24-72 hours later)</Text>
               <TextInput
-                ref={followUpRef}
+                ref={journalFollowUpRef}
                 style={[
                   styles.input,
                   styles.textArea,
-                  focusedField === 'followUp' && styles.inputFocused
+                  activeInputField === 'followUp' && styles.inputFocused
                 ]}
-                value={followUpReflection}
-                onChangeText={setFollowUpReflection}
+                value={journalFollowUp}
+                onChangeText={setJournalFollowUp}
                 placeholder="Did your better response improve the outcome? What did you learn?"
                 placeholderTextColor="#94a3b8"
-                multiline
+                multiline={true}
                 textAlignVertical="top"
                 returnKeyType="done"
                 blurOnSubmit={true}
-                onFocus={() => handleFieldFocus('followUp', 750)}
-                onBlur={handleFieldBlur}
+                onFocus={() => handleJournalFieldFocus('followUp', 750)}
+                onBlur={handleJournalFieldBlur}
                 onSubmitEditing={() => Keyboard.dismiss()}
-                onKeyPress={(e) => handleKeyPress('followUp', e)}
-                inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
+                onKeyPress={(e) => handleJournalKeyPress('followUp', e)}
+                inputAccessoryViewID={JOURNAL_INPUT_ACCESSORY_ID}
                 maxLength={500}
+                enablesReturnKeyAutomatically={true}
               />
-              {renderCharCount(followUpReflection)}
+              {renderJournalCharCount(journalFollowUp)}
             </Animated.View>
 
             <TouchableOpacity 
               style={styles.button} 
               onPress={() => {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                handleSave();
+                handleJournalSave();
               }}
               activeOpacity={0.8}
             >
               <Text style={styles.buttonText}>Save Entry</Text>
             </TouchableOpacity>
             
-            <View style={[styles.keyboardSpacer, { height: keyboardHeight > 0 ? keyboardHeight : 60 }]} />
+            <View style={[styles.keyboardSpacer, { height: keyboardSpacing > 0 ? keyboardSpacing : 60 }]} />
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-      {renderInputAccessory()}
+      {renderJournalInputAccessory()}
     </SafeAreaView>
   );
 }
@@ -452,18 +517,18 @@ export default function NewEntryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
-  },
+    backgroundColor: '#fff',
+  } as ViewStyle,
   content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
+    padding: 16,
+    paddingBottom: 32,
+  } as ViewStyle,
   heading: {
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 24,
-    color: '#1e293b',
+    color: '#0f172a',
     marginBottom: 24,
-  },
+  } as TextStyle,
   inputGroup: {
     marginBottom: 20,
     borderRadius: 16,
@@ -477,40 +542,39 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3.84,
     elevation: 2,
-  },
+  } as ViewStyle,
   label: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 16,
-    color: '#475569',
-    marginBottom: 8,
-  },
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 4,
+  } as TextStyle,
   input: {
-    fontSize: 16,
     fontFamily: 'Inter_400Regular',
-    color: '#1e293b',
-    borderRadius: 12,
+    fontSize: 16,
+    color: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    padding: 12,
     backgroundColor: '#f8fafc',
-    padding: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
+  } as TextStyle,
   inputFocused: {
-    borderColor: '#6366f1',
+    borderColor: '#0284c7',
     backgroundColor: '#fff',
-    shadowColor: '#6366f1',
+    shadowColor: '#0284c7',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
+    shadowRadius: 4,
+  } as TextStyle,
   textArea: {
     minHeight: 120,
     maxHeight: 200,
-    paddingTop: 16,
     textAlignVertical: 'top',
-  },
+  } as TextStyle,
   button: {
     backgroundColor: '#6366f1',
     padding: 16,
@@ -525,73 +589,52 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
-  },
+  } as ViewStyle,
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
-  },
+  } as TextStyle,
   keyboardSpacer: {
     height: 60,
-  },
-  inputAccessory: {
+  } as ViewStyle,
+  inputAccessoryContainer: {
     backgroundColor: '#f8fafc',
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
-  },
-  accessoryContent: {
+    padding: 8,
+  } as ViewStyle,
+  inputAccessoryContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  navigationButtons: {
-    flexDirection: 'row',
-    gap: 16,
-  },
+    paddingHorizontal: 8,
+  } as ViewStyle,
   navButton: {
     padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#ede9fe',
-  },
+    marginHorizontal: 4,
+  } as ViewStyle,
   navButtonDisabled: {
-    backgroundColor: '#f1f5f9',
-  },
+    opacity: 0.5,
+  } as ViewStyle,
   doneButton: {
-    paddingHorizontal: 16,
+    marginLeft: 12,
     paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#6366f1',
-    shadowColor: '#6366f1',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+  } as ViewStyle,
   doneButtonText: {
-    color: '#fff',
+    color: '#0284c7',
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-  },
+    fontWeight: '600',
+  } as TextStyle,
   charCount: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'right',
+    alignSelf: 'flex-end',
     marginTop: 4,
-  },
-  navIcon: {
-    shadowColor: '#6366f1',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
+  } as ViewStyle,
+  charCountText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    color: '#94a3b8',
+  } as TextStyle,
 });
