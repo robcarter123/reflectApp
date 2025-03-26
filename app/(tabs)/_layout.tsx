@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { View, StyleSheet, Platform } from 'react-native';
-import { Chrome as Home, Book, MessageCircle, Settings, Plus } from 'lucide-react-native';
+import { Home, Book, MessageCircle, Settings, Plus } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 
 export default function TabLayout() {
@@ -68,9 +68,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     elevation: 0,
     shadowOpacity: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
   },
   androidTabBar: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
   },
   plusButton: {
     width: 56,
